@@ -56,7 +56,7 @@ pub const HideCursorWhenTypingMode = enum {
 };
 
 /// Color of background in RGBA with premultiplied alpha (alpha should only affect nested sessions)
-background_color: [4]f32 = [_]f32{ 0.0, 0.16862745, 0.21176471, 1.0 }, // Solarized base03
+background_color: [4]f32 = [_]f32{ 0.0, 0.0, 0.0, 1.0 }, // Black
 
 /// Width of borders in pixels
 border_width: u31 = 2,
