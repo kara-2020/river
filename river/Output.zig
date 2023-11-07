@@ -195,7 +195,47 @@ pub fn create(wlr_output: *wlr.Output) !void {
 
     if (!wlr_output.initRender(server.allocator, server.renderer)) return error.InitRenderFailed;
 
-    if (wlr_output.preferredMode()) |preferred_mode| {
+    var best: ?*wlr.Output.Mode = null;
+
+    // Find the best mode:
+    // Max: 1920x1080 Aspect: 16:9 Refresh: <=60Hz
+    var mode_it = wlr_output.modes.iterator(.forward);
+    while (mode_it.next()) |mode| {
+        if (mode.width > 1920 or mode.height > 1080) {
+            continue;
+        }
+        if (mode.refresh > 60000) {
+            continue;
+        }
+        if (mode.picture_aspect_ratio == .@"16_9") {
+            best = mode;
+            break;
+        }
+    }
+
+    // If we didn't find a best mode, drop the aspect ratio requirement:
+    // Max: 1920x1080 Refresh: <=60Hz
+    if (best == null) {
+        mode_it = wlr_output.modes.iterator(.forward);
+        while (mode_it.next()) |mode| {
+            if (mode.width > 1920 or mode.height > 1080) {
+                continue;
+            }
+            if (mode.refresh > 60000) {
+                continue;
+            }
+            best = mode;
+            break;
+        }
+    }
+
+    // If we still didn't find a best mode, fall back to the preferred mode:
+    if (best == null) {
+        best = wlr_output.preferredMode();
+    }
+
+    if (best) |preferred_mode| {
+        log.err("Best mode: {}x{} Refresh: {}Hz Aspect: {}", .{ preferred_mode.width, preferred_mode.height, preferred_mode.refresh, preferred_mode.picture_aspect_ratio });
         wlr_output.setMode(preferred_mode);
         wlr_output.enable(true);
         wlr_output.commit() catch {
@@ -205,6 +245,7 @@ pub fn create(wlr_output: *wlr.Output) !void {
                 wlr_output.setMode(mode);
                 wlr_output.commit() catch continue;
                 // This mode works, use it
+                log.err("Best mode failed. Use fallback mode: {}x{} Refresh: {}Hz Aspect: {}", .{ preferred_mode.width, preferred_mode.height, preferred_mode.refresh, preferred_mode.picture_aspect_ratio });
                 break;
             }
             // If no mode works, then we will just leave the output disabled.
