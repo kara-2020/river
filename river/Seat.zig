@@ -199,6 +199,7 @@ pub fn focus(self: *Self, _target: ?*View) void {
     if (target) |view| {
         // Only ever focus "flutter" app
         const app_id = mem.sliceTo(view.getAppId(), 0) orelse "";
+        log.info("{s}", .{app_id});
         if (mem.eql(u8, app_id, "flutter")) {
             view.pending_focus_stack_link.remove();
             self.focused_output.?.pending.focus_stack.prepend(view);

@@ -235,7 +235,7 @@ pub fn create(wlr_output: *wlr.Output) !void {
     }
 
     if (best) |preferred_mode| {
-        log.err("Best mode: {}x{} Refresh: {}Hz Aspect: {}", .{ preferred_mode.width, preferred_mode.height, preferred_mode.refresh, preferred_mode.picture_aspect_ratio });
+        log.info("Best mode: {}x{} Refresh: {}Hz Aspect: {}", .{ preferred_mode.width, preferred_mode.height, preferred_mode.refresh, preferred_mode.picture_aspect_ratio });
         wlr_output.setMode(preferred_mode);
         wlr_output.enable(true);
         wlr_output.commit() catch {
@@ -245,7 +245,7 @@ pub fn create(wlr_output: *wlr.Output) !void {
                 wlr_output.setMode(mode);
                 wlr_output.commit() catch continue;
                 // This mode works, use it
-                log.err("Best mode failed. Use fallback mode: {}x{} Refresh: {}Hz Aspect: {}", .{ preferred_mode.width, preferred_mode.height, preferred_mode.refresh, preferred_mode.picture_aspect_ratio });
+                log.info("Best mode failed. Use fallback mode: {}x{} Refresh: {}Hz Aspect: {}", .{ preferred_mode.width, preferred_mode.height, preferred_mode.refresh, preferred_mode.picture_aspect_ratio });
                 break;
             }
             // If no mode works, then we will just leave the output disabled.
