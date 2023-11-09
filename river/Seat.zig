@@ -15,7 +15,6 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 const Self = @This();
-const mem = std.mem;
 
 const build_options = @import("build_options");
 const std = @import("std");
@@ -197,14 +196,9 @@ pub fn focus(self: *Self, _target: ?*View) void {
 
     // Focus the target view or clear the focus if target is null
     if (target) |view| {
-        // Only ever focus "flutter" app
-        const app_id = mem.sliceTo(view.getAppId(), 0) orelse "";
-        log.info("{s}", .{app_id});
-        if (mem.eql(u8, app_id, "flutter")) {
-            view.pending_focus_stack_link.remove();
-            self.focused_output.?.pending.focus_stack.prepend(view);
-            self.setFocusRaw(.{ .view = view });
-        }
+        view.pending_focus_stack_link.remove();
+        self.focused_output.?.pending.focus_stack.prepend(view);
+        self.setFocusRaw(.{ .view = view });
     } else {
         self.setFocusRaw(.{ .none = {} });
     }
