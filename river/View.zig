@@ -507,7 +507,15 @@ pub fn map(view: *Self) !void {
         view.setPendingOutput(output);
 
         var it = server.input_manager.seats.first;
-        while (it) |seat_node| : (it = seat_node.next) seat_node.data.focus(view);
+        while (it) |seat_node| : (it = seat_node.next) {
+            if (view.getAppId()) |app_id| {
+                const app_id_slice = std.mem.span(app_id);
+                if (std.mem.eql(u8, app_id_slice, "flutter")) {
+                    log.info("map focus() flutter app", .{});
+                    seat_node.data.focus(view);
+                }
+            }
+        }
     }
 
     view.float_box = view.pending.box;

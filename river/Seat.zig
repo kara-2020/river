@@ -185,13 +185,29 @@ pub fn focus(self: *Self, _target: ?*View) void {
     }
 
     // If null, set the target to the first currently visible view in the focus stack if any
+    // PS: Try set to flutter app first
     if (target == null) {
         var it = self.focused_output.?.pending.focus_stack.iterator(.forward);
         target = while (it.next()) |view| {
             if (view.pending.tags & self.focused_output.?.pending.tags != 0) {
-                break view;
+                if (view.getAppId()) |app_id| {
+                    const app_id_slice = std.mem.span(app_id);
+                    if (std.mem.eql(u8, app_id_slice, "flutter")) {
+                        log.info("focus(null) flutter app", .{});
+                        break view;
+                    }
+                }
             }
         } else null;
+
+        if (target == null) {
+            it = self.focused_output.?.pending.focus_stack.iterator(.forward);
+            target = while (it.next()) |view| {
+                if (view.pending.tags & self.focused_output.?.pending.tags != 0) {
+                    break view;
+                }
+            } else null;
+        }
     }
 
     // Focus the target view or clear the focus if target is null
