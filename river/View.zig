@@ -485,26 +485,42 @@ pub fn map(view: *Self) !void {
 
     view.foreign_toplevel_handle.map();
 
-    if (server.config.float_rules.match(view)) |float| {
+    if (server.config.rules.float.match(view)) |float| {
         view.pending.float = float;
     }
-    if (server.config.ssd_rules.match(view)) |ssd| {
+    if (server.config.rules.fullscreen.match(view)) |fullscreen| {
+        view.pending.fullscreen = fullscreen;
+    }
+    if (server.config.rules.ssd.match(view)) |ssd| {
         view.pending.ssd = ssd;
     }
 
-    const focused_output = server.input_manager.defaultSeat().focused_output;
-    if (try server.config.outputRuleMatch(view) orelse focused_output) |output| {
+    if (server.config.rules.dimensions.match(view)) |dimensions| {
+        view.pending.box.width = dimensions.width;
+        view.pending.box.height = dimensions.height;
+    }
+
+    const output = try server.config.outputRuleMatch(view) orelse
+        server.input_manager.defaultSeat().focused_output;
+
+    if (server.config.rules.position.match(view)) |position| {
+        view.pending.box.x = position.x;
+        view.pending.box.y = position.y;
+    } else if (output) |o| {
         // Center the initial pending box on the output
-        view.pending.box.x = @divTrunc(@max(0, output.usable_box.width - view.pending.box.width), 2);
-        view.pending.box.y = @divTrunc(@max(0, output.usable_box.height - view.pending.box.height), 2);
+        view.pending.box.x = @divTrunc(@max(0, o.usable_box.width - view.pending.box.width), 2);
+        view.pending.box.y = @divTrunc(@max(0, o.usable_box.height - view.pending.box.height), 2);
+    }
 
-        view.pending.tags = blk: {
-            if (server.config.tag_rules.match(view)) |tags| break :blk tags;
-            const tags = output.pending.tags & server.config.spawn_tagmask;
-            break :blk if (tags != 0) tags else output.pending.tags;
-        };
+    view.pending.tags = blk: {
+        const default = if (output) |o| o.pending.tags else server.root.fallback.tags;
+        if (server.config.rules.tags.match(view)) |tags| break :blk tags;
+        const tags = default & server.config.spawn_tagmask;
+        break :blk if (tags != 0) tags else default;
+    };
 
-        view.setPendingOutput(output);
+    if (output) |o| {
+        view.setPendingOutput(o);
 
         var it = server.input_manager.seats.first;
         while (it) |seat_node| : (it = seat_node.next) {
@@ -516,6 +532,26 @@ pub fn map(view: *Self) !void {
                 }
             }
         }
+    } else {
+        log.debug("no output available for newly mapped view, adding to fallback stacks", .{});
+
+        view.pending_wm_stack_link.remove();
+        view.pending_focus_stack_link.remove();
+        view.inflight_wm_stack_link.remove();
+        view.inflight_focus_stack_link.remove();
+
+        switch (server.config.attach_mode) {
+            .top => {
+                server.root.fallback.pending.wm_stack.prepend(view);
+                server.root.fallback.inflight.wm_stack.prepend(view);
+            },
+            .bottom => {
+                server.root.fallback.pending.wm_stack.append(view);
+                server.root.fallback.inflight.wm_stack.append(view);
+            },
+        }
+        server.root.fallback.pending.focus_stack.prepend(view);
+        server.root.fallback.inflight.focus_stack.prepend(view);
     }
 
     view.float_box = view.pending.box;
