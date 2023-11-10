@@ -55,6 +55,16 @@ pub const HideCursorWhenTypingMode = enum {
     enabled,
 };
 
+pub const Position = struct {
+    x: u31,
+    y: u31,
+};
+
+pub const Dimensions = struct {
+    width: u31,
+    height: u31,
+};
+
 /// Color of background in RGBA with premultiplied alpha (alpha should only affect nested sessions)
 background_color: [4]f32 = [_]f32{ 0.0, 0.0, 0.0, 1.0 }, // Black
 
@@ -77,10 +87,15 @@ mode_to_id: std.StringHashMap(u32),
 /// All user-defined keymap modes, indexed by mode id
 modes: std.ArrayListUnmanaged(Mode),
 
-float_rules: RuleList(bool) = .{},
-ssd_rules: RuleList(bool) = .{},
-tag_rules: RuleList(u32) = .{},
-output_rules: RuleList([]const u8) = .{},
+rules: struct {
+    float: RuleList(bool) = .{},
+    ssd: RuleList(bool) = .{},
+    tags: RuleList(u32) = .{},
+    output: RuleList([]const u8) = .{},
+    position: RuleList(Position) = .{},
+    dimensions: RuleList(Dimensions) = .{},
+    fullscreen: RuleList(bool) = .{},
+} = .{},
 
 /// The selected focus_follows_cursor mode
 focus_follows_cursor: FocusFollowsCursorMode = .disabled,
@@ -154,13 +169,16 @@ pub fn deinit(self: *Self) void {
     for (self.modes.items) |*mode| mode.deinit();
     self.modes.deinit(util.gpa);
 
-    self.float_rules.deinit();
-    self.ssd_rules.deinit();
-    self.tag_rules.deinit();
-    for (self.output_rules.rules.items) |rule| {
+    self.rules.float.deinit();
+    self.rules.ssd.deinit();
+    self.rules.tags.deinit();
+    for (self.rules.output.rules.items) |rule| {
         util.gpa.free(rule.value);
     }
-    self.output_rules.deinit();
+    self.rules.output.deinit();
+    self.rules.position.deinit();
+    self.rules.dimensions.deinit();
+    self.rules.fullscreen.deinit();
 
     util.gpa.free(self.default_layout_namespace);
 
@@ -169,7 +187,7 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn outputRuleMatch(self: *Self, view: *View) !?*Output {
-    const output_name = self.output_rules.match(view) orelse return null;
+    const output_name = self.rules.output.match(view) orelse return null;
     var it = server.root.active_outputs.iterator(.forward);
     while (it.next()) |output| {
         const wlr_output = output.wlr_output;

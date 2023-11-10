@@ -77,6 +77,7 @@ complete -c riverctl -n '__fish_riverctl_complete_arg 1' -a 'keyboard-group-dest
 complete -c riverctl -n '__fish_riverctl_complete_arg 1' -a 'keyboard-group-add'     -d 'Add a keyboard to a keyboard group'
 complete -c riverctl -n '__fish_riverctl_complete_arg 1' -a 'keyboard-group-remove'  -d 'Remove a keyboard from a keyboard group'
 complete -c riverctl -n '__fish_riverctl_complete_arg 1' -a 'keyboard-layout'        -d 'Set the keyboard layout'
+complete -c riverctl -n '__fish_riverctl_complete_arg 1' -a 'keyboard-layout-file'   -d 'Set the keyboard layout from a file.'
 
 # Subcommands
 complete -c riverctl -n '__fish_seen_subcommand_from focus-output send-to-output' -n '__fish_riverctl_complete_arg 2' -a 'next previous'
@@ -88,10 +89,10 @@ complete -c riverctl -n '__fish_seen_subcommand_from unmap'                     
 complete -c riverctl -n '__fish_seen_subcommand_from attach-mode'                 -n '__fish_riverctl_complete_arg 2' -a 'top bottom'
 complete -c riverctl -n '__fish_seen_subcommand_from focus-follows-cursor'        -n '__fish_riverctl_complete_arg 2' -a 'disabled normal always'
 complete -c riverctl -n '__fish_seen_subcommand_from set-cursor-warp'             -n '__fish_riverctl_complete_arg 2' -a 'disabled on-output-change on-focus-change'
-complete -c riverctl -n '__fish_seen_subcommand_from list-rules'                  -n '__fish_riverctl_complete_arg 2' -a 'float ssd tag output'
+complete -c riverctl -n '__fish_seen_subcommand_from list-rules'                  -n '__fish_riverctl_complete_arg 2' -a 'float ssd tag output position dimensions fullscreen'
 
 # Options and subcommands for 'rule-add' and 'rule-del'
-set -l rule_actions float no-float ssd csd tag output
+set -l rule_actions float no-float ssd csd tag output position dimensions fullscreen no-fullscreen
 complete -c riverctl -n '__fish_seen_subcommand_from rule-add rule-del' -n "not __fish_seen_subcommand_from $rule_actions" -n 'not __fish_seen_argument -o app-id' -o 'app-id' -r
 complete -c riverctl -n '__fish_seen_subcommand_from rule-add rule-del' -n "not __fish_seen_subcommand_from $rule_actions" -n 'not __fish_seen_argument -o title'  -o 'title' -r
 complete -c riverctl -n '__fish_seen_subcommand_from rule-add rule-del' -n "not __fish_seen_subcommand_from $rule_actions" -n 'test (math (count (commandline -opc)) % 2) -eq 0' -a "$rule_actions"
