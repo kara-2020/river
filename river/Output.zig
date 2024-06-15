@@ -214,34 +214,81 @@ pub fn create(wlr_output: *wlr.Output) !void {
         var state = wlr.Output.State.init();
         defer state.finish();
 
-        state.setEnabled(true);
+        log.info("output '{s}' configure", .{output.wlr_output.name});
 
-        if (wlr_output.preferredMode()) |preferred_mode| {
-            state.setMode(preferred_mode);
-        }
+        // Only enable output with a name "HDMI-A-1"
+        if (!std.mem.eql(u8, std.mem.span(wlr_output.name), "HDMI-A-1")) {
+            state.setEnabled(false);
+            _ = wlr_output.commitState(&state);
+        } else {
+            state.setEnabled(true);
 
-        if (!wlr_output.commitState(&state)) {
-            log.err("initial output commit with preferred mode failed, trying all modes", .{});
-
-            // It is important to try other modes if the preferred mode fails
-            // which is reported to be helpful in practice with e.g. multiple
-            // high resolution monitors connected through a usb dock.
-            var it = wlr_output.modes.iterator(.forward);
-            while (it.next()) |mode| {
-                state.setMode(mode);
-                if (wlr_output.commitState(&state)) {
-                    log.info("initial output commit succeeded with mode {}x{}@{}mHz", .{
-                        mode.width,
-                        mode.height,
-                        mode.refresh,
-                    });
+            var best: ?*wlr.Output.Mode = null;
+            // Find the best mode:
+            // Max: 1920x1080 Aspect: 16:9 Refresh: <=60Hz
+            var mode_it = wlr_output.modes.iterator(.forward);
+            while (mode_it.next()) |mode| {
+                if (mode.width > 1920 or mode.height > 1080) {
+                    continue;
+                }
+                if (mode.refresh > 60000) {
+                    continue;
+                }
+                if (mode.picture_aspect_ratio == .@"16_9") {
+                    best = mode;
                     break;
-                } else {
-                    log.err("initial output commit failed with mode {}x{}@{}mHz", .{
-                        mode.width,
-                        mode.height,
-                        mode.refresh,
-                    });
+                }
+            }
+
+            // If we didn't find a best mode, drop the aspect ratio requirement:
+            // Max: 1920x1080 Refresh: <=60Hz
+            if (best == null) {
+                mode_it = wlr_output.modes.iterator(.forward);
+                while (mode_it.next()) |mode| {
+                    if (mode.width > 1920 or mode.height > 1080) {
+                        continue;
+                    }
+                    if (mode.refresh > 60000) {
+                        continue;
+                    }
+                    best = mode;
+                    break;
+                }
+            }
+
+            // If we still didn't find a best mode, fall back to the preferred mode:
+            if (best == null) {
+                best = wlr_output.preferredMode();
+            }
+
+            if (best) |preferred_mode| {
+                log.info("output best mode: {}x{}@{}mHz Aspect: {}", .{ preferred_mode.width, preferred_mode.height, preferred_mode.refresh, preferred_mode.picture_aspect_ratio });
+                state.setMode(preferred_mode);
+            }
+
+            if (!wlr_output.commitState(&state)) {
+                log.err("initial output commit with preferred mode failed, trying all modes", .{});
+
+                // It is important to try other modes if the preferred mode fails
+                // which is reported to be helpful in practice with e.g. multiple
+                // high resolution monitors connected through a usb dock.
+                var it = wlr_output.modes.iterator(.forward);
+                while (it.next()) |mode| {
+                    state.setMode(mode);
+                    if (wlr_output.commitState(&state)) {
+                        log.info("initial output commit succeeded with mode {}x{}@{}mHz", .{
+                            mode.width,
+                            mode.height,
+                            mode.refresh,
+                        });
+                        break;
+                    } else {
+                        log.err("initial output commit failed with mode {}x{}@{}mHz", .{
+                            mode.width,
+                            mode.height,
+                            mode.refresh,
+                        });
+                    }
                 }
             }
         }
