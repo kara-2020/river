@@ -176,38 +176,58 @@ pub fn focus(seat: *Seat, _target: ?*View) void {
         }
     }
 
+    // Focus flutter app
+    var flutter_app: ?*View = null;
     if (target) |view| {
-        if (view.pending.output == null or
-            view.pending.tags & view.pending.output.?.pending.tags == 0)
-        {
-            // If the view is not currently visible, behave as if null was passed
-            target = null;
-        } else if (view.pending.output.? != seat.focused_output.?) {
-            // If the view is not on the currently focused output, focus it
+        // Switch focus to flutter app if it is found in the passed view's focus stack
+        if (view.pending.output != null) {
+            flutter_app = seat.findFlutterApp(view.pending.output.?.pending.focus_stack);
+        }
+    }
+    if (flutter_app == null) {
+        // Switch focus to flutter app if it is found in the current focus stack
+        flutter_app = seat.findFlutterApp(seat.focused_output.?.pending.focus_stack);
+    }
+
+    if (flutter_app) |view| {
+        if (view.pending.output.? != seat.focused_output.?) {
             seat.focusOutput(view.pending.output.?);
         }
-    }
-
-    {
-        var it = seat.focused_output.?.pending.focus_stack.iterator(.forward);
-        while (it.next()) |view| {
-            if (view.pending.fullscreen and
-                view.pending.tags & seat.focused_output.?.pending.tags != 0)
+        target = view;
+    } else {
+        if (target) |view| {
+            if (view.pending.output == null or
+                view.pending.tags & view.pending.output.?.pending.tags == 0)
             {
-                target = view;
-                break;
+                // If the view is not currently visible, behave as if null was passed
+                target = null;
+            } else if (view.pending.output.? != seat.focused_output.?) {
+                // If the view is not on the currently focused output, focus it
+                seat.focusOutput(view.pending.output.?);
             }
         }
-    }
 
-    // If null, set the target to the first currently visible view in the focus stack if any
-    if (target == null) {
-        var it = seat.focused_output.?.pending.focus_stack.iterator(.forward);
-        target = while (it.next()) |view| {
-            if (view.pending.tags & seat.focused_output.?.pending.tags != 0) {
-                break view;
+        {
+            var it = seat.focused_output.?.pending.focus_stack.iterator(.forward);
+            while (it.next()) |view| {
+                if (view.pending.fullscreen and
+                    view.pending.tags & seat.focused_output.?.pending.tags != 0)
+                {
+                    target = view;
+                    break;
+                }
             }
-        } else null;
+        }
+
+        // If null, set the target to the first currently visible view in the focus stack if any
+        if (target == null) {
+            var it = seat.focused_output.?.pending.focus_stack.iterator(.forward);
+            target = while (it.next()) |view| {
+                if (view.pending.tags & seat.focused_output.?.pending.tags != 0) {
+                    break view;
+                }
+            } else null;
+        }
     }
 
     // Focus the target view or clear the focus if target is null
@@ -615,4 +635,21 @@ fn handleRequestSetPrimarySelection(
 ) void {
     const seat: *Seat = @fieldParentPtr("request_set_primary_selection", listener);
     seat.wlr_seat.setPrimarySelection(event.source, event.serial);
+}
+
+fn findFlutterApp(seat: *Seat, l: wl.list.Head(View, .pending_focus_stack_link)) ?*View {
+    var _l = l;
+    var it = _l.iterator(.forward);
+    while (it.next()) |view| {
+        if (view.pending.tags & seat.focused_output.?.pending.tags != 0) {
+            if (view.getAppId()) |app_id| {
+                const app_id_slice = std.mem.span(app_id);
+                if (std.mem.eql(u8, app_id_slice, "flutter")) {
+                    return view;
+                }
+            }
+        }
+    }
+
+    return null;
 }
