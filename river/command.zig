@@ -97,6 +97,7 @@ const command_impls = std.StaticStringMap(
         .{ "unmap-switch",              @import("command/map.zig").unmapSwitch },
         .{ "xcursor-theme",             @import("command/xcursor_theme.zig").xcursorTheme },
         .{ "zoom",                      @import("command/zoom.zig").zoom },
+        .{ "list-outputs",              @import("command/output.zig").listOutputs },
         // zig fmt: on
     },
 );

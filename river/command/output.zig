@@ -133,3 +133,23 @@ fn getOutput(seat: *Seat, str: []const u8) !?*Output {
         return Error.InvalidOutputIndicator;
     }
 }
+
+pub fn listOutputs(
+    _: *Seat,
+    args: []const [:0]const u8,
+    out: *?[]const u8,
+) Error!void {
+    if (args.len > 1) return error.TooManyArguments;
+
+    var input_list = std.ArrayList(u8).init(util.gpa);
+    const writer = input_list.writer();
+
+    var it = server.root.active_outputs.iterator(.forward);
+    while (it.next()) |output| {
+        const output_name = mem.span(output.wlr_output.name);
+
+        try writer.print("{s}\n", .{output_name});
+    }
+
+    out.* = try input_list.toOwnedSlice();
+}
