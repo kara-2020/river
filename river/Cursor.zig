@@ -211,6 +211,7 @@ pub fn init(cursor: *Cursor, seat: *Seat) !void {
     errdefer cursor.hide_cursor_timer.remove();
     try cursor.hide_cursor_timer.timerUpdate(server.config.cursor_hide_timeout);
     try cursor.setTheme(null, null);
+    cursor.hide();
 
     // wlr_cursor *only* displays an image on screen. It does not move around
     // when the pointer moves. However, we can attach input devices to it, and
