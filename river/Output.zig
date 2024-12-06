@@ -216,8 +216,10 @@ pub fn create(wlr_output: *wlr.Output) !void {
 
         log.info("output '{s}' configure", .{wlr_output.name});
 
-        // Only enable output with a name "HDMI-A-1"
-        if (!std.mem.eql(u8, std.mem.span(wlr_output.name), "HDMI-A-1")) {
+        // Only enable output with a name "HDMI-A-1" or "Virtual-1"
+        if (!std.mem.eql(u8, std.mem.span(wlr_output.name), "HDMI-A-1") and
+            !std.mem.eql(u8, std.mem.span(wlr_output.name), "Virtual-1"))
+        {
             state.setEnabled(false);
             _ = wlr_output.commitState(&state);
         } else {
